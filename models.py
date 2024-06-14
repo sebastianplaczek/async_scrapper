@@ -1,0 +1,111 @@
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    Float,
+    Boolean,
+    Sequence,
+    inspect,
+    DateTime,
+)
+from sqlalchemy import inspect, create_engine, MetaData
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
+
+Base = declarative_base()
+
+
+class Offers(Base):
+    __tablename__ = "offers"
+    id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
+    link = Column(String(255))
+    type = Column(String(20))
+    title = Column(String(255))
+    address = Column(String(255))
+    address_params = Column(String(1000))
+    price = Column(Float)
+    price_per_m = Column(Float)
+    rooms = Column(Integer)
+    size = Column(Float)
+    active = Column(Boolean)
+    additional_params_1 = Column(String(1000))
+    additional_params_2 = Column(String(1000))
+    municipality = Column(String(100))
+    county = Column(String(100))
+    vivodeship = Column(String(50))
+    city = Column(String(50))
+    postcode = Column(String(10))
+    lat = Column(Float)
+    lon = Column(Float)
+    create_date = Column(DateTime, default=datetime.now())
+    seller = Column(String(255))
+    seller_type = Column(String(255))
+    filled = Column(Boolean, default=0)
+    page = Column(Integer)
+    bumped = Column(Boolean)
+
+
+class NominatimApi(Base):
+    __tablename__ = "NominatimApi"
+    id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
+    link = Column(String(255))
+    status_code = Column(Integer)
+    create_date = Column(DateTime, default=datetime.now())
+
+
+class OtodomWebsite(Base):
+    __tablename__ = "OtodomWebsite"
+    id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
+    type = Column(String(20))
+    link = Column(String(255))
+    active = Column(Boolean)
+    num_pages = Column(Integer)
+    create_date = Column(DateTime, default=datetime.now())
+
+
+engine = create_engine("mysql+pymysql://normal:qwerty123@localhost:3307/scrapper_db")
+
+
+# Funkcja do sprawdzania i tworzenia tabel, jeśli nie istnieją
+from sqlalchemy import create_engine, inspect, Column, Integer, String, MetaData
+from sqlalchemy.ext.declarative import declarative_base
+
+
+def create_tables_and_columns_if_not_exists(engine, base):
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+    metadata = MetaData(bind=engine)
+    tables_to_create = []
+
+    # Loop through all table classes
+    for table_class in base.__subclasses__():
+        if hasattr(table_class, "__tablename__"):
+            table_name = table_class.__tablename__
+            if table_name not in existing_tables:
+                tables_to_create.append(table_class.__table__)
+            else:
+                # Check for missing columns
+                table = table_class.__table__
+                existing_columns = {
+                    col["name"] for col in inspector.get_columns(table_name)
+                }
+                for column in table.columns:
+                    if column.name not in existing_columns:
+                        column_type = column.type.compile(engine.dialect)
+                        with engine.connect() as conn:
+                            conn.execute(
+                                f"ALTER TABLE {table_name} ADD COLUMN {column.name} {column_type}"
+                            )
+
+    # Create any new tables
+    if tables_to_create:
+        base.metadata.create_all(engine, tables=tables_to_create)
+
+
+# Utwórz tabele tylko jeśli nie istnieją
+create_tables_and_columns_if_not_exists(engine, Base)
+
+# Utworzenie sesji
+Session = sessionmaker(bind=engine)

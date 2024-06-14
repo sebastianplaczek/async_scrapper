@@ -1,0 +1,17 @@
+
+version: '3.9'
+
+services:
+  mariadb:
+    container_name: scrapper_container
+    user: "root"
+    image: mysql
+    ports:
+      - 3307:3306
+    volumes:
+      - C:\projects\small_scrapper\database:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_PASSWORD=qwerty123
+      - MYSQL_USER=normal
+      - MYSQL_DATABASE=scrapper_db
