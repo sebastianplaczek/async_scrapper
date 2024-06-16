@@ -24,27 +24,31 @@ class Offers(Base):
     type = Column(String(20))
     title = Column(String(255))
     address = Column(String(255))
-    address_params = Column(String(1000))
     price = Column(Float)
     price_per_m = Column(Float)
     rooms = Column(Integer)
     size = Column(Float)
     active = Column(Boolean)
-    additional_params_1 = Column(String(1000))
-    additional_params_2 = Column(String(1000))
-    municipality = Column(String(100))
-    county = Column(String(100))
-    vivodeship = Column(String(50))
-    city = Column(String(50))
-    postcode = Column(String(10))
-    lat = Column(Float)
-    lon = Column(Float)
     create_date = Column(DateTime, default=datetime.now())
     seller = Column(String(255))
     seller_type = Column(String(255))
     filled = Column(Boolean, default=0)
     page = Column(Integer)
     bumped = Column(Boolean)
+    offer_loc_id = Column(Integer)
+
+
+class OffersLoc(Base):
+    __tablename__ = "offers_loc"
+    id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
+    lat = Column(Float)
+    lon = Column(Float)
+    city = Column(String(50))
+    municipality = Column(String(100))
+    county = Column(String(100))
+    vivodeship = Column(String(50))
+    postcode = Column(String(10))
+    link = Column(String(255))
 
 
 class NominatimApi(Base):
@@ -53,6 +57,8 @@ class NominatimApi(Base):
     link = Column(String(255))
     status_code = Column(Integer)
     create_date = Column(DateTime, default=datetime.now())
+    empty = Column(Boolean)
+    offer_id = Column(Integer)
 
 
 class OtodomWebsite(Base):

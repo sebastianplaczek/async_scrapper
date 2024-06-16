@@ -71,6 +71,7 @@ class Otodom:
             print("No cookies")
 
     def check_pages(self):
+        self.init_driver()
         date = str(datetime.now()).replace(" ", "_").replace(":", "")
         session = Session()
         session.query(OtodomWebsite).update({"active": 0})
@@ -95,15 +96,6 @@ class Otodom:
             session.add(website)
 
             print(f"Number of pages : {type} {self.number_of_pages}")
-
-            ##########################################
-
-            # self.init_driver()
-
-            # for i in range(1, self.number_of_pages):
-
-            #     self.page = i
-            #     self.scrap_offers(link + f"&page={i}")
 
         session.commit()
         session.close()
@@ -209,10 +201,6 @@ class Otodom:
                     bumped = False
             except:
                 bumped = False
-            # try:
-            #     address_params = str(self.get_coordinates(address))
-            # except:
-            address_params = ""
 
             if self.save_to_db:
                 new_offer = Offers(
@@ -228,7 +216,6 @@ class Otodom:
                     seller_type=seller_type,
                     bumped=bumped,
                     page=page_num,
-                    address_params=address_params,
                 )
                 session.add(new_offer)
         if self.save_to_db:
@@ -240,6 +227,7 @@ class Otodom:
 
     def scrap_pages(self, type, start_page, chunk_size):
         self.init_driver()
+        # odpalic selenium i strzelac linkami zapisujac kontent
         for page_num in range(start_page, start_page + chunk_size):
             self.scrap_offers(type, page_num)
         self.driver.close()

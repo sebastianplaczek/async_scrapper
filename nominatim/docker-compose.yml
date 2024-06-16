@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  nominatim:
+    image: mediagis/nominatim:4.3
+    environment:
+      - PBF_URL=https://download.geofabrik.de/europe/poland-latest.osm.pbf
+      - REPLICATION_URL=https://download.geofabrik.de/europe/poland-updates/
+    ports:
+      - "8080:8080"
+    volumes:
+      - C:\projects\small_scrapper\nominatim\nominatim-data:/var/lib/postgresql/12/main
+    container_name: nominatim
+
+volumes:
+  nominatim-data:
