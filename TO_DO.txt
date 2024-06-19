@@ -1,0 +1,5 @@
+1.Dodanie numeru scrapa dla offers pobierany z scrapinfo
+2. Zmiana nazwy type na inna np. re_type
+3.Dane offers do offer_loc zeby nie duplikowac danych adresowych
+4. Poprawa przeliczania ceny za metr dla działek
+

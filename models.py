@@ -8,6 +8,7 @@ from sqlalchemy import (
     Sequence,
     inspect,
     DateTime,
+    MetaData,
 )
 from sqlalchemy import inspect, create_engine, MetaData
 from sqlalchemy.ext.declarative import declarative_base
@@ -36,6 +37,7 @@ class Offers(Base):
     page = Column(Integer)
     bumped = Column(Boolean)
     offer_loc_id = Column(Integer)
+    n_scrap = Column(Integer)
 
 
 class OffersLoc(Base):
@@ -49,12 +51,14 @@ class OffersLoc(Base):
     vivodeship = Column(String(50))
     postcode = Column(String(10))
     link = Column(String(255))
+    create_date = Column(DateTime, default=datetime.now())
+    address = Column(String(255))
 
 
 class NominatimApi(Base):
     __tablename__ = "NominatimApi"
     id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
-    link = Column(String(255))
+    link = Column(String(500))
     status_code = Column(Integer)
     create_date = Column(DateTime, default=datetime.now())
     empty = Column(Boolean)
@@ -70,13 +74,22 @@ class OtodomWebsite(Base):
     num_pages = Column(Integer)
     create_date = Column(DateTime, default=datetime.now())
 
+class ScrapInfo(Base):
+    __tablename__="scrapinfo"
+    id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
+    create_date = Column(DateTime, default=datetime.now())
+    active = Column(Boolean,default=True)
 
-engine = create_engine("mysql+pymysql://normal:qwerty123@localhost:3307/scrapper_db")
+
+engine = create_engine("mysql+pymysql://normal:qwerty123@localhost:3307/scrapper_db",
+    pool_size=10,          # Domyślnie 5
+    max_overflow=20,       # Domyślnie 10
+    pool_timeout=30,       # Domyślnie 30 sekund
+    pool_recycle=1800      # Recykluj połączenia co 30 minut
+)
 
 
 # Funkcja do sprawdzania i tworzenia tabel, jeśli nie istnieją
-from sqlalchemy import create_engine, inspect, Column, Integer, String, MetaData
-from sqlalchemy.ext.declarative import declarative_base
 
 
 def create_tables_and_columns_if_not_exists(engine, base):
