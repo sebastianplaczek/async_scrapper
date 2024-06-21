@@ -52,7 +52,8 @@ class OffersLoc(Base):
     price_per_m = Column(Float)
     rooms = Column(Integer)
     size = Column(Float)
-    filled = Column(Boolean, default=0)
+    filled = Column(Integer, default=0)
+    additional_params = Column(String(1000))
 
 
 class NominatimApi(Base):
