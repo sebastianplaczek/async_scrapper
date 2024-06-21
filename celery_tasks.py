@@ -1,7 +1,7 @@
 from celery import Celery
 import time
 
-from otodom_scrapper import Otodom
+from otodom_scrapper import Scraper
 from otodom_filler import Filler
 
 # broker = "amqp://guest:guest@localhost:5672/"
@@ -12,7 +12,7 @@ app.conf.update(broker_connection_retry_on_startup=True)
 
 @app.task
 def scrap(type, start_page, chunk_size):
-    model = Otodom(save_to_db=True)
+    model = Scraper(save_to_db=True)
     model.scrap_pages(type, start_page, chunk_size)
 
 

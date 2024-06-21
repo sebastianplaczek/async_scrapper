@@ -18,7 +18,7 @@ class Filler:
 
         query = f"""
         SELECT id
-        FROM OFFERS
+        FROM OFFERS_LOC
         WHERE filled = 0
 
         """
@@ -79,13 +79,11 @@ class Filler:
     def update_row(self, offer_id):
 
         session = Session()
-        offer = session.query(Offers).get(offer_id)
-        offer_loc = session.query(OffersLoc).filter(OffersLoc.link == offer.link)
+        offer = session.query(OffersLoc).get(offer_id)
 
-        n_offer = offer_loc.count()
         address = offer.address
 
-        if n_offer == 0 and address != '':
+        if address != '':
 
             data = self.nominatim_request(address, offer_id)
             if data:
@@ -135,22 +133,20 @@ class Filler:
                     link=offer.link,
                     address=offer.address,
                 )
-
-                session.add(new_offer_loc)
-                session.commit()
-                offer.offer_loc_id = new_offer_loc.id
+                offer.lat = lat
+                offer.lon = lon
+                offer.city = city
+                offer.municipality = municipality
+                offer.county = county
+                offer.vivodeship = vivodeship
+                offer.postcode = postcode
                 offer.filled = 1
                 session.commit()
-        elif address == '':
+
+        else :
             offer.filled = 1
             session.commit()
-        else:
-            offer.filled = 1
-            offer_loc_id = (
-                session.query(OffersLoc).filter(OffersLoc.link == offer.link).first().id
-            )
-            offer.offer_loc_id = offer_loc_id
-            session.commit()
+            
 
     def update_chunk_rows(self, list_id):
         self.session = Session()

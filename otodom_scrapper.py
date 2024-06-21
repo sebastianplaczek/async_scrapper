@@ -12,12 +12,13 @@ import asyncio
 
 
 import pandas as pd
+import numpy as np
 import requests
 import sys
 from datetime import datetime
 import timeit
 
-from models import Session, Offers, OtodomWebsite
+from models import Session, Offers, OtodomWebsite, ScrapInfo,OffersLoc
 
 
 WEBS = {
@@ -29,10 +30,16 @@ WEBS = {
 }
 
 
-class Otodom:
+class Scraper:
 
     def __init__(self, save_to_db=True):
         self.save_to_db = save_to_db
+        self.check_scrap_num()
+
+    def check_scrap_num(self):
+        session = Session()
+        self.n_scrap = session.query(ScrapInfo).filter(ScrapInfo.active == 1).first().id
+        session.close()
 
     def init_driver(self):
         firefox_binary_path = "C:\\Program Files\\Mozilla Firefox\\firefox.exe"
@@ -122,11 +129,10 @@ class Otodom:
         n_offers = len(offers)
         print("Number of offers", n_offers)
 
-        if self.save_to_db:
-            session = Session()
+        session = Session()
 
         self.elapsed_time = 0
-        for offer in offers:
+        for position,offer in enumerate(offers):
             try:
                 link = (
                     "otodom.pl"
@@ -202,22 +208,54 @@ class Otodom:
             except:
                 bumped = False
 
-            if self.save_to_db:
-                new_offer = Offers(
-                    link=link,
-                    type=type,
-                    title=title,
-                    address=address,
-                    rooms=rooms,
-                    size=size,
-                    price=price,
-                    price_per_m=price_per_m,
-                    seller=seller,
-                    seller_type=seller_type,
-                    bumped=bumped,
-                    page=page_num,
-                )
-                session.add(new_offer)
+            n_offer = session.query(OffersLoc).filter(OffersLoc.link==link).count()
+
+            if n_offer ==0:
+                if type =='dzialki':
+                    new_link = OffersLoc(
+                        type=type,
+                        link=link,
+                        address=address,
+                        size=rooms,
+                        price=price,
+                        price_per_m=np.round(price/rooms,2),
+                        filled= False
+                    )
+                else:
+                    new_link = OffersLoc(
+                        type=type,
+                        link=link,
+                        address=address,
+                        rooms=rooms,
+                        size=size,
+                        price=price,
+                        price_per_m=price_per_m,
+                        filled= False
+                    )
+                session.add(new_link)
+                
+                if self.save_to_db:
+                    session.commit()
+
+                offer_loc_id=new_link.id
+                
+            else:
+                offer_loc_id = session.query(OffersLoc).filter(OffersLoc.link==link).first().id
+            
+
+            new_offer = Offers(
+                link=link,
+                title=title,
+                seller=seller,
+                seller_type=seller_type,
+                bumped=bumped,
+                page=page_num,
+                position = position,
+                n_scrap=self.n_scrap,
+                offer_loc_id= offer_loc_id
+            )
+            session.add(new_offer)
+        
         if self.save_to_db:
             session.commit()
 
@@ -242,10 +280,10 @@ class Otodom:
 
 
 if __name__ == "__main__":
-    model = Otodom()
-    n_pages = 104
-    chunk_size = 10
+    model = Scraper()
+    n_pages = 1
+    chunk_size = 1
     for i in range(0, n_pages, chunk_size):
         start = i + 1
         size = min(chunk_size, n_pages - i)
-        model.scrap_pages("test", start, size)
+        model.scrap_pages("dzialki", start, size)

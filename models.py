@@ -24,17 +24,11 @@ class Offers(Base):
     link = Column(String(255))
     type = Column(String(20))
     title = Column(String(255))
-    address = Column(String(255))
-    price = Column(Float)
-    price_per_m = Column(Float)
-    rooms = Column(Integer)
-    size = Column(Float)
-    active = Column(Boolean)
     create_date = Column(DateTime, default=datetime.now())
     seller = Column(String(255))
     seller_type = Column(String(255))
-    filled = Column(Boolean, default=0)
     page = Column(Integer)
+    position = Column(Integer)
     bumped = Column(Boolean)
     offer_loc_id = Column(Integer)
     n_scrap = Column(Integer)
@@ -43,6 +37,7 @@ class Offers(Base):
 class OffersLoc(Base):
     __tablename__ = "offers_loc"
     id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
+    type = Column(String(20))
     lat = Column(Float)
     lon = Column(Float)
     city = Column(String(50))
@@ -53,6 +48,11 @@ class OffersLoc(Base):
     link = Column(String(255))
     create_date = Column(DateTime, default=datetime.now())
     address = Column(String(255))
+    price = Column(Float)
+    price_per_m = Column(Float)
+    rooms = Column(Integer)
+    size = Column(Float)
+    filled = Column(Boolean, default=0)
 
 
 class NominatimApi(Base):
@@ -74,18 +74,20 @@ class OtodomWebsite(Base):
     num_pages = Column(Integer)
     create_date = Column(DateTime, default=datetime.now())
 
+
 class ScrapInfo(Base):
-    __tablename__="scrapinfo"
+    __tablename__ = "scrapinfo"
     id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
     create_date = Column(DateTime, default=datetime.now())
-    active = Column(Boolean,default=True)
+    active = Column(Boolean, default=True)
 
 
-engine = create_engine("mysql+pymysql://normal:qwerty123@localhost:3307/scrapper_db",
-    pool_size=10,          # Domyślnie 5
-    max_overflow=20,       # Domyślnie 10
-    pool_timeout=30,       # Domyślnie 30 sekund
-    pool_recycle=1800      # Recykluj połączenia co 30 minut
+engine = create_engine(
+    "mysql+pymysql://normal:qwerty123@localhost:3307/scrapper_db",
+    pool_size=10,  # Domyślnie 5
+    max_overflow=20,  # Domyślnie 10
+    pool_timeout=30,  # Domyślnie 30 sekund
+    pool_recycle=1800,  # Recykluj połączenia co 30 minut
 )
 
 
