@@ -5,7 +5,7 @@ celery -A celery_tasks flower --port=5555
 
 celery -A celery_tasks worker --loglevel=INFO --without-mingle --without-heartbeat -Ofair --concurrency=8
 celery -A celery_tasks worker --loglevel=INFO --without-mingle --without-heartbeat -Ofair --pool=solo
-celery -A celery_tasks worker --loglevel=INFO --without-mingle --without-heartbeat -Ofair --pool=threads --concurrency=6
+celery -A celery_tasks worker --loglevel=INFO --without-mingle --without-heartbeat -Ofair --pool=threads --concurrency=5
 
 
 celery -A celery_tasks inspect scheduled

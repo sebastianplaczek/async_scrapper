@@ -8,7 +8,9 @@ from bs4 import BeautifulSoup
 import pdb
 import json
 import os
-import asyncio
+
+import cProfile
+import pstats
 
 
 import pandas as pd
@@ -18,7 +20,7 @@ import sys
 from datetime import datetime
 import timeit
 
-from models import Session, Offers, OtodomWebsite, ScrapInfo,OffersLoc
+from models import Session, Offers, OtodomWebsite, ScrapInfo, OffersLoc, Runtime
 
 
 WEBS = {
@@ -32,8 +34,9 @@ WEBS = {
 
 class Scraper:
 
-    def __init__(self, save_to_db=True):
+    def __init__(self, save_to_db=True, threads=None):
         self.save_to_db = save_to_db
+        self.threads = threads
         self.check_scrap_num()
 
     def check_scrap_num(self):
@@ -120,154 +123,162 @@ class Scraper:
         start_time = datetime.now()
         website = WEBS[type] + f"&page={page_num}"
         self.driver.get(website)
-        self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        # self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         html = self.driver.page_source
         soup = BeautifulSoup(html, "html.parser")
 
         offers = soup.find_all("div", {"class": ["css-13gthep eeungyz2"]})
 
         n_offers = len(offers)
-        print("Number of offers", n_offers)
 
         session = Session()
 
         self.elapsed_time = 0
-        for position,offer in enumerate(offers):
-            try:
-                link = (
-                    "otodom.pl"
-                    + offer.find("a", {"class": ["css-16vl3c1 e17g0c820"]})["href"]
-                )
-            except:
-                link = None
-            try:
-                price = offer.find("div", {"class": ["css-fdwt8z e1nxvqrh0"]}).text
-                bad_character = self.find_wrong_letters(price[:-2])
-                price = float(price.replace(bad_character, "")[:-2])
-            except:
+        for position, offer in enumerate(offers):
+            # try:
+            link_element = offer.find("a", {"class": ["css-16vl3c1 e17g0c820"]})
+            link = "otodom.pl" + link_element["href"] if link_element else None
+
+            price_element = offer.find("div", {"class": ["css-fdwt8z e1nxvqrh0"]})
+            price = price_element.text if price_element else None
+            bad_character = self.find_wrong_letters(price[:-2])
+            if price == "Zapytaj o cenę":
                 price = None
+            else:
+                price = float(price.replace(bad_character, "")[:-2].replace(",", "."))
 
-            try:
-                address = offer.find("div", {"class": ["css-12h460e e1nxvqrh1"]}).text
-            except:
-                address = None
-            try:
-                title = offer.find("p", {"class": ["css-3czwt4 endh1010"]}).text
-            except:
-                title = None
-            try:
-                rooms = int(
-                    offer.find("div", {"class": ["css-1c1kq07 e1clni9t0"]})
-                    .find_all("dd")[0]
-                    .text.split(" ")[0]
-                )
-            except:
-                rooms = None
-            try:
-                size = float(
-                    offer.find("div", {"class": ["css-1c1kq07 e1clni9t0"]})
-                    .find_all("dd")[1]
-                    .text.split(" ")[0]
-                )
-            except:
-                size = None
-            try:
-                price_per_m = float(
-                    offer.find("div", {"class": ["css-1c1kq07 e1clni9t0"]})
-                    .find_all("dd")[2]
-                    .text.split(" ")[0]
-                    .strip()
-                    .replace("\xa0", " ")
-                    .split(" ")[0]
-                )
-            except:
-                price_per_m = None
-            try:
-                seller = offer.find("div", {"class": ["css-15pdjbs es3mydq3"]}).text
+            address_element = offer.find("div", {"class": ["css-12h460e e1nxvqrh1"]})
+            address = address_element.text if address_element else None
 
-            except:
-                try:
-                    seller = offer.find("div", {"class": ["css-7rx3ki es3mydq2"]}).text
+            title_element = offer.find("p", {"class": ["css-3czwt4 endh1010"]})
+            title = title_element.text if title_element else None
 
-                except:
-                    seller = None
-            try:
-                seller_type = offer.find(
-                    "div", {"class": ["css-196u6lt es3mydq4"]}
-                ).text
-            except:
-                seller_type = None
-            try:
-                if (
-                    offer.find("div", {"class": ["css-gduqhf es3mydq5"]}).text
-                    == "Podbite"
+            floor, rooms, size, price_per_m = None, None, None, None
+
+            params = offer.find("div", {"class": ["css-1c1kq07 e1clni9t0"]})
+            if params:
+                params_dd = params.find_all("dd")
+                if params_dd and type in ("dom_pierwotny", "dom_wtorny"):
+                    if len(params_dd) > 0:
+                        rooms = int(params_dd[0].text.split(" ")[0].replace("+", ""))
+                    if len(params_dd) > 1:
+                        size = float(params_dd[1].text.split(" ")[0])
+                elif params_dd and type == "dzialki":
+                    if len(params_dd) > 0:
+                        size = float(params_dd[0].text.split(" ")[0])
+                elif params_dd and type in (
+                    "mieszkanie_pierwotny",
+                    "mieszkanie_wtorny",
                 ):
-                    bumped = True
+                    if len(params_dd) > 0:
+                        rooms = int(params_dd[0].text.split(" ")[0].replace("+", ""))
+                    if len(params_dd) > 1:
+                        size = float(params_dd[1].text.split(" ")[0])
+                    if len(params_dd) > 2:
+                        floor = params_dd[2].text
+                        if floor == "parter":
+                            floor = 0
+                        elif "piętro" in floor:
+                            floor = int(floor.split(" ")[0].replace("+", ""))
+                        else:
+                            if len(params_dd) > 3:
+                                floor = params_dd[3].text
+                                if floor == "parter":
+                                    floor = 0
+                                elif "piętro" in floor:
+                                    floor = int(floor.split(" ")[0].replace("+", ""))
+                                else:
+                                    floor = None
+
                 else:
-                    bumped = False
-            except:
+                    pass
+
+                price_per_m = np.round(price / size, 2) if price and size else None
+
+            seller_element = offer.find("div", {"class": ["css-15pdjbs es3mydq3"]})
+            seller = seller_element.text if seller_element else None
+
+            seller_type_element = offer.find("div", {"class": ["css-196u6lt es3mydq4"]})
+            seller_type = seller_type_element.text if seller_type_element else None
+
+            bumped_element = offer.find("div", {"class": ["css-gduqhf es3mydq5"]})
+            bumped_text = bumped_element.text if bumped_element else None
+            if bumped_text == "Podbite":
+                bumped = True
+            else:
                 bumped = False
 
-            n_offer = session.query(OffersLoc).filter(OffersLoc.link==link).count()
+            n_offer = session.query(OffersLoc).filter(OffersLoc.link == link).count()
 
-            if n_offer ==0:
-                if type =='dzialki':
-                    new_link = OffersLoc(
-                        type=type,
-                        link=link,
-                        address=address,
-                        size=rooms,
-                        price=price,
-                        price_per_m=np.round(price/rooms,2),
-                        filled= False
-                    )
-                else:
-                    new_link = OffersLoc(
-                        type=type,
-                        link=link,
-                        address=address,
-                        rooms=rooms,
-                        size=size,
-                        price=price,
-                        price_per_m=price_per_m,
-                        filled= False
-                    )
+            if n_offer == 0:
+                new_link = OffersLoc(
+                    type=type,
+                    link=link,
+                    address=address,
+                    rooms=rooms,
+                    size=size,
+                    price=price,
+                    price_per_m=price_per_m,
+                    filled=False,
+                )
                 session.add(new_link)
-                
+
                 if self.save_to_db:
                     session.commit()
 
-                offer_loc_id=new_link.id
-                
+                offer_loc_id = new_link.id
+
             else:
-                offer_loc_id = session.query(OffersLoc).filter(OffersLoc.link==link).first().id
-            
+                offer_loc_id = (
+                    session.query(OffersLoc).filter(OffersLoc.link == link).first().id
+                )
 
             new_offer = Offers(
+                type=type,
                 link=link,
                 title=title,
                 seller=seller,
                 seller_type=seller_type,
                 bumped=bumped,
                 page=page_num,
-                position = position,
+                position=position,
                 n_scrap=self.n_scrap,
-                offer_loc_id= offer_loc_id
+                offer_loc_id=offer_loc_id,
             )
             session.add(new_offer)
-        
+
+        # except Exception as e:
+        #     print(e)
+        end_time = datetime.now()
+        elapsed_time = np.round((end_time - start_time).total_seconds(), 1)
+        time_per_offer = np.round(elapsed_time / n_offers, 2)
+        print(f"{type}, page {page_num}, offers {n_offers}: {elapsed_time}s, {time_per_offer}s")
+
+        page_runtime = Runtime(
+            type=type,
+            n_offers=n_offers,
+            page = page_num,
+            n_scrap=self.n_scrap,
+            threads=self.threads,
+            time_s=elapsed_time,
+            time_per_offer=time_per_offer,
+        )
+        session.add(page_runtime)
+
         if self.save_to_db:
             session.commit()
-
-        end_time = datetime.now()
-        elapsed_time = (end_time - start_time).total_seconds()
-        print(f"Page {page_num}: {elapsed_time} sekund")
 
     def scrap_pages(self, type, start_page, chunk_size):
         self.init_driver()
         # odpalic selenium i strzelac linkami zapisujac kontent
         for page_num in range(start_page, start_page + chunk_size):
-            self.scrap_offers(type, page_num)
+            try:
+                self.scrap_offers(type, page_num)
+            except Exception as e:
+                print(e)
+                self.driver.close()
+                self.driver.quit()
+                self.init_driver()
         self.driver.close()
         self.driver.quit()
 
@@ -280,10 +291,12 @@ class Scraper:
 
 
 if __name__ == "__main__":
-    model = Scraper()
-    n_pages = 1
-    chunk_size = 1
+    model = Scraper(save_to_db=False, threads=1)
+    # links = [object.pages_from_db()[1]]
+    # n_pages = links.num_pages
+    n_pages = 10
+    chunk_size = 10
     for i in range(0, n_pages, chunk_size):
         start = i + 1
         size = min(chunk_size, n_pages - i)
-        model.scrap_pages("dzialki", start, size)
+        model.scrap_pages("dom_wtorny", start, size)

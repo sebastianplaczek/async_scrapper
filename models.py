@@ -51,6 +51,7 @@ class OffersLoc(Base):
     price = Column(Float)
     price_per_m = Column(Float)
     rooms = Column(Integer)
+    floor = Column(Integer)
     size = Column(Float)
     filled = Column(Integer, default=0)
     additional_params = Column(String(1000))
@@ -82,6 +83,30 @@ class ScrapInfo(Base):
     create_date = Column(DateTime, default=datetime.now())
     active = Column(Boolean, default=True)
 
+class CeleryTasks(Base):
+    __tablename__= "celery_tasks"
+    id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
+    task_id = Column(Integer)
+    type = Column(String(20))
+    create_date = Column(DateTime, default=datetime.now())
+    status = Column(String(20))
+    done = Column(Boolean,default=0)
+    time_start = Column(DateTime)
+    time_end = Column(DateTime)
+    runtime = Column(Float)
+    pages = Column(String(20))
+
+class Runtime(Base):
+    __tablename__= "runtime"
+    id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
+    n_offers = Column(Integer)
+    threads = Column(Integer)
+    time_s = Column(Float)
+    time_per_offer = Column(Float)
+    type =  Column(String(20))
+    page = Column(Integer)
+    n_scrap = Column(Integer)
+    create_date = Column(DateTime, default=datetime.now())
 
 engine = create_engine(
     "mysql+pymysql://normal:qwerty123@localhost:3307/scrapper_db",
@@ -103,6 +128,7 @@ def create_tables_and_columns_if_not_exists(engine, base):
 
     # Loop through all table classes
     for table_class in base.__subclasses__():
+        test = base.__subclasses__()
         if hasattr(table_class, "__tablename__"):
             table_name = table_class.__tablename__
             if table_name not in existing_tables:
