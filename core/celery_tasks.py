@@ -5,7 +5,7 @@ from otodom_scraper import Scraper
 from otodom_filler import Filler
 
 # broker = "amqp://guest:guest@localhost:5672/"
-app = Celery("tasks", broker="redis://localhost/0", backend="redis://localhost/0")
+app = Celery("tasks", broker="pyamqp://", backend="rpc://")
 
 app.conf.update(broker_connection_retry_on_startup=True)
 
@@ -17,9 +17,9 @@ def scrap(type, start_page, chunk_size, threads):
 
 
 @app.task
-def fill(id_list):
+def fill(id_list,threads):
     model = Filler()
-    model.update_chunk_rows(id_list)
+    model.update_chunk_rows(id_list,threads)
 
 
 @app.task

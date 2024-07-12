@@ -1,4 +1,4 @@
-from models import Session, Offers, engine, NominatimApi, OffersLoc
+from models import Session, Offers, engine, NominatimApi, OffersLoc, CeleryTasks
 import bs4
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
@@ -9,9 +9,12 @@ from bs4 import BeautifulSoup
 import re
 
 
+
 import requests
 import pandas as pd
 import json
+from datetime import datetime
+import numpy as np
 
 
 class Filler:
@@ -30,7 +33,7 @@ class Filler:
         firefox_options.add_argument("--no-sandbox")
         self.driver = webdriver.Firefox(options=firefox_options, service=service)
 
-    def take_data_from_db(self,filled_type=0,column="id"):
+    def take_data_from_db(self, filled_type=0, column="id"):
 
         query = f"""
         SELECT id
@@ -99,7 +102,7 @@ class Filler:
 
         address = offer.address
 
-        if address != '':
+        if address != "":
 
             data = self.nominatim_request(address, offer_id)
             if data:
@@ -159,11 +162,11 @@ class Filler:
                 offer.filled = 1
                 session.commit()
 
-        else :
+        else:
             offer.filled = 1
             session.commit()
 
-    def scrap_additional_params(self,offer_id):
+    def scrap_additional_params(self, offer_id):
 
         offer = self.session.query(OffersLoc).get(offer_id)
 
@@ -180,22 +183,34 @@ class Filler:
             try:
                 value = params.find("div", {"class": ["css-1wi2w6s e26jmad5"]}).text
             except:
-                value = ''
+                value = ""
 
-            if value != '':
+            if value != "":
                 params_dict[label] = value
 
         offer.filled = 2
         offer.additional_params = json.dumps(params_dict)
         self.session.commit()
 
-    def update_chunk_rows(self, list_id):
+    def update_chunk_rows(self, list_id, threads):
         self.session = Session()
+        task = CeleryTasks(
+            type="nominatim",
+            status="QUEUE",
+            time_start=datetime.now(),
+            pages=len(list_id),
+            threads=threads,
+        )
         for offer_id in list_id:
             self.update_row(offer_id)
+
+        task.time_end = datetime.now()
+        task.runtime = np.round((task.time_end - task.time_start).total_seconds(), 1)
+        task.status = "FINISHED"
+        self.session.commit()
         self.session.close()
 
-    def scrap_chunk_additional_params(self,id_list):
+    def scrap_chunk_additional_params(self, id_list):
         self.init_driver()
         self.session = Session()
         for offer_id in id_list:
@@ -205,16 +220,17 @@ class Filler:
         self.driver.quit()
 
 
-# if __name__ == "__main__":
-#     model = Filler()
-#     id_list = model.take_data_from_db(filled_type=0,column='id')
-#     model.update_chunk_rows(id_list)
-
 if __name__ == "__main__":
     model = Filler()
-    # id_list = model.take_data_from_db(filled_type=1,column='id')
-    id_list = [278295]
-    model.scrap_chunk_additional_params(id_list)
+    # id_list = model.take_data_from_db(filled_type=0,column='id')
+    id_list = [54567]
+    model.update_chunk_rows(id_list)
+
+# if __name__ == "__main__":
+#     model = Filler()
+#     # id_list = model.take_data_from_db(filled_type=1,column='id')
+#     id_list = [278338]
+#     model.scrap_chunk_additional_params(id_list)
 
 
 # przetestowac predkosc requests i aiohttp

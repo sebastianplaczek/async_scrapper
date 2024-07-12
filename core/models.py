@@ -95,6 +95,8 @@ class CeleryTasks(Base):
     time_end = Column(DateTime)
     runtime = Column(Float)
     pages = Column(String(20))
+    start_page = Column(String(20))
+    threads = Column(Integer)
 
 class Runtime(Base):
     __tablename__= "runtime"
@@ -108,8 +110,22 @@ class Runtime(Base):
     n_scrap = Column(Integer)
     create_date = Column(DateTime, default=datetime.now())
 
+class ErrorLogs(Base):
+    __tablename__ = "error_logs"
+    id = Column(Integer, Sequence("user_id_seq"), primary_key=True)
+    type = Column(String(20))
+    value_type = Column(String(20))
+    value = Column(String(20))
+    exception = Column(String(1000))
+
+db_url = (
+    "mysql+pymysql://normal:qwerty123@mariadb:3306/scrapper_db?charset=utf8mb4"
+)
+
+# db_url = "mysql+pymysql://normal:qwerty123@localhost:3307/scrapper_db"
+
 engine = create_engine(
-    "mysql+pymysql://normal:qwerty123@localhost:3307/scrapper_db",
+    db_url,
     pool_size=10,  # Domyślnie 5
     max_overflow=20,  # Domyślnie 10
     pool_timeout=30,  # Domyślnie 30 sekund

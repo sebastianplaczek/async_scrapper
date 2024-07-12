@@ -7,6 +7,8 @@ celery -A celery_tasks worker --loglevel=INFO --without-mingle --without-heartbe
 celery -A celery_tasks worker --loglevel=INFO --without-mingle --without-heartbeat -Ofair --pool=solo
 celery -A celery_tasks worker --loglevel=INFO --without-mingle --without-heartbeat -Ofair --pool=threads --concurrency=5
 
+celery -A celery_tasks worker --loglevel=INFO --pool=threads --concurrency=5
+
 
 celery -A celery_tasks inspect scheduled
 celery -A celery_tasks status
